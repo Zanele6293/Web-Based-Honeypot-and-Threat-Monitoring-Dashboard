@@ -3,10 +3,34 @@ from flask import Flask, redirect, render_template, request, url_for
 
 
 app = Flask(__name__)
-attack_logs= []
+app.secret_key = "riverside_sun_secure_key_9911"
 
-@app.route('/secret-admin-portal',methods=['GET', 'POST'])
-def honeypot_login():
+#A list of  hotel employees
+
+VALID_EMPLOYEES = {
+    "taku.borerwe@southernsun.com": "SunVaal2026!",
+    "reception@riversidesun.com": "HotelRoom123",
+    "security@riversidesun.com": "SafeGuard#55",
+}
+
+attack_logs= []
+# A list of blocked IP_Address
+blocked_ips = {}
+
+@app.route("/")
+def home():
+  return redirect(url_for("portal"))
+
+@app.route('/portal',methods=['GET', 'POST'])
+def portal():
+    ip_address = request.remote_addr
+    action_type = request.args.get("action","login")
+
+    if ip_address in blocked_ips:
+        return render_template("blocked.html",message = ("Access Denied.Please contact IT Security."),)
+    
+
+
     if request.method == 'POST':
         username = request.form.get("username")
         passward = request.form.get("password") 
