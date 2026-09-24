@@ -3,45 +3,40 @@ from flask import Flask, redirect, render_template, request, url_for
 
 
 app = Flask(__name__)
-app.secret_key = "riverside_sun_secure_key_9911"
 
-#A list of  hotel employees
+app.secret_key = "riverside-sun_secure_key_9911"
 
+#Data o f valid emplyees
 VALID_EMPLOYEES = {
-    "taku.borerwe@southernsun.com": "SunVaal2026!",
+    "Zanele@southernsun.com": "SunVaal2026!",
     "reception@riversidesun.com": "HotelRoom123",
     "security@riversidesun.com": "SafeGuard#55",
 }
 
 attack_logs= []
-# A list of blocked IP_Address
-blocked_ips = {}
+#A dictionary that tracks IPs manually and automatically.
+blocked_ips ={}
 
+# Home route redirects visitors to our portal
 @app.route("/")
 def home():
-  return redirect(url_for("portal"))
+  return redirect(url_for("honeypot_login"))
 
-@app.route('/portal',methods=['GET', 'POST'])
-def portal():
-    ip_address = request.remote_addr
-    action_type = request.args.get("action","login")
-
-    if ip_address in blocked_ips:
-        return render_template("blocked.html",message = ("Access Denied.Please contact IT Security."),)
-    
-
-
+@app.route('/secret-admin-portal',methods=['GET', 'POST'])
+def honeypot_login():
     if request.method == 'POST':
         username = request.form.get("username")
         passward = request.form.get("password") 
         #This gets the IP address of who is viting 
         ip_address = request.remote_addr
-        timestamp = datetime.now.strfttime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         #The line bellow will show us the broser or tool they used to log in
         user_agent = request.headers.get("User-Agent")
 
         ip_attempt = sum(1 for log in attack_logs if log["ip"]== ip_address)+1 # We are counting how many times the attacker tried to hack us
-        threat_level= ("CONFIRMED BOT" if ip_address>3 else "SUSPICIOUSE ATTEMPT")
+        threat_level = (
+        "🚨 CONFIRMED BOT" if ip_attempt > 3 else "⚠️ SUSPICIOUS ATTEMPT"
+    )
 
 
         """Saving the hacker's details on the database"""
