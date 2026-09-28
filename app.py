@@ -45,6 +45,12 @@ def honeypot_login():
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         #The line bellow will show us the broser or tool they used to log in
         user_agent = request.headers.get("User-Agent")
+        form_type = request.form.get("form_type", "Login")
+
+        # Checking if the user is a valid employee
+        if username in VALID_EMPLOYEES and VALID_EMPLOYEES[username] == passward:
+            session["logged_in_user"] = username
+            return redirect(url_for("employee_dashboard"))
 
         ip_attempt = sum(1 for log in attack_logs if log["ip"]== ip_address)+1 # We are counting how many times the attacker tried to hack us
         threat_level = (
