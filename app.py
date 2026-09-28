@@ -24,6 +24,19 @@ def home():
 
 @app.route('/secret-admin-portal',methods=['GET', 'POST'])
 def honeypot_login():
+      # This gets the IP address of who is visiting
+    ip_address = request.remote_addr
+    action_type = request.args.get("action", "login")
+
+    if ip_address in blocked_ips:
+        return render_template(
+        "blocked.html",
+        message=(
+            "Access Denied: Your IP address ("
+            + ip_address
+            + ") has been blacklisted by Riverside Sun Security Operations (SOC) due to suspicious malicious activity."
+        ),
+    )
     if request.method == 'POST':
         username = request.form.get("username")
         passward = request.form.get("password") 
