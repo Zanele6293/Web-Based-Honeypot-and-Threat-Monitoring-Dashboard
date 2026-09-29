@@ -17,6 +17,19 @@ attack_logs= []
 #A dictionary that tracks IPs manually and automatically.
 blocked_ips ={}
 
+def inspect_firewall_rules(username, password):
+  """Checks incoming user input for common hacker signatures
+
+  like SQL Injection (e.g., 'OR 1=1) or Script Tags (XSS).
+  """
+  malicious_signatures = ["'", '"', "or 1=1", "select *", "<script>", "--", ";"]
+  combined_input = (username + " " + password).lower()
+
+  for signature in malicious_signatures:
+    if signature in combined_input:
+      return True  # Firewall triggered! Malicious pattern found.
+  return False
+
 # Home route redirects visitors to our portal
 @app.route("/")
 def home():
