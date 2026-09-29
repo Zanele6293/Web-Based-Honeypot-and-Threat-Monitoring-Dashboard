@@ -77,15 +77,45 @@ def honeypot_login():
         }
 
         attack_logs.insert(0,log_entry)
-        
-        return render_template("login.html",error= "Invalid Security Token. Access Logged.")
-    return render_template("login.html", logs=attack_logs)
 
+        # If the auto-block just triggered, show blocked page immediately
+        if ip_address in blocked_ips:
+            return render_template(
+            "blocked.html",
+            message=(
+              "Security Alert: Maximum login attempts exceeded. Your IP ("
+              + ip_address
+              + ") has been auto-quarantined."
+          ),
+      )
+        return render_template("login.html",action =action_type,error= "Invalid Security Token. Access Logged.")
+    return render_template("login.html",action=action_type, logs=attack_logs)
+
+#Employee logout route
+@app.route("/logout")
+def logout():
+    session.pop("logged_in_user",None)
+    return redirect(url_for("honeypot_login"))
 
 """Our security dashboard where i'll be watching the attacks"""
 @app.route("/dashboard")
 def dashboard():
-    return render_template("dashboard.html",logs=attack_logs)
+    return render_template("dashboard.html",logs=attack_logs,blocked=blocked_ips )
+
+@app.route("/block/<path:ip_address>")
+def block_ip(ip_address):
+  if ip_address not in blocked_ips:
+    blocked_ips[ip_address] = {
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "reason": "Manually Enforced by SOC Analyst",
+    }
+  return redirect(url_for("dashboard"))
+
+@app.route("/unblock/<path:ip_address>")
+def unblock_ip(ip_address):
+  if ip_address in blocked_ips:
+    del blocked_ips[ip_address]
+  return redirect(url_for("dashboard"))
 
 if __name__ == "__main__":
-    app.run(debug = True, port=5000)
+    app.run(host="0.0.0.0",debug = True, port=5000)
