@@ -37,9 +37,10 @@ def honeypot_login():
             + ") has been blacklisted by Riverside Sun Security Operations (SOC) due to suspicious malicious activity."
         ),
     )
+
     if request.method == 'POST':
-        username = request.form.get("username")
-        passward = request.form.get("password") 
+        username = request.form.get("username","").strip()
+        passward = request.form.get("password","").strip()
         #This gets the IP address of who is viting 
         ip_address = request.remote_addr
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -53,14 +54,20 @@ def honeypot_login():
             return redirect(url_for("employee_dashboard"))
 
         ip_attempt = sum(1 for log in attack_logs if log["ip"]== ip_address)+1 # We are counting how many times the attacker tried to hack us
-        threat_level = (
-        "🚨 CONFIRMED BOT" if ip_attempt > 3 else "⚠️ SUSPICIOUS ATTEMPT"
-    )
 
+        if ip_attempt > 3:
+            blocked_ips[ip_address]={
+                "time": timestamp,
+                "reason": "Automated Quarantined (Exceeded 3 Failed Attempts)",
+            }
+            threat_level = "🔴 AUTO-QUARANTINED BY SYSTEM" 
+        else:
+            threat_level = "🚨Confirmed Malicious Attempt" if ip_attempt > 1 else "⚠️ Suspicious Activity Detected"
 
         """Saving the hacker's details on the database"""
         log_entry ={
             "ip": ip_address,
+            "action": form_type,
             "username":username,
             "password": passward,
             "time": timestamp,
@@ -70,6 +77,7 @@ def honeypot_login():
         }
 
         attack_logs.insert(0,log_entry)
+        
         return render_template("login.html",error= "Invalid Security Token. Access Logged.")
     return render_template("login.html", logs=attack_logs)
 
