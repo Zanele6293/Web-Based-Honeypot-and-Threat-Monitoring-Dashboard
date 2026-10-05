@@ -13,6 +13,34 @@
             <p class="text-muted small mb-1">Southern Sun Staff & Management Portal</p>
             <span class="badge bg-secondary">Vanderbijlpark, Vaal River</span>
         </div>
+
+        <ul class="nav nav-pills nav-fill mb-3">
+            <li class="nav-item">
+                <a class="nav-link active" href="/secret-admin-portal?action=login">Log In</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/secret-admin-portal?action=signup">Sign Up (New Staff)</a>
+            </li>
+        </ul>
+
+        
+        {% if error %}
+            <div class="alert alert-danger text-center py-2 small" role="alert">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <form method="POST">
+            <input type="hidden" name="form_type" value="{{ action.capitalize() if action else 'Login' }}">
+
+        <div class="mb-3">
+                <label class="form-label small fw-bold">Staff Email Address</label>
+                <input type="email" name="username" class="form-control" placeholder="e.g. taku.borerwe@southernsun.com" required autofocus>
+        </div>
+        <div class="mb-3">
+                <label class="form-label small fw-bold">Password / PIN</label>
+                <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+        </div>    
     </div>
     </body>
 </html>
