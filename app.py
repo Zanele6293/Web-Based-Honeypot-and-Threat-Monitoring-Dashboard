@@ -57,7 +57,7 @@ def honeypot_login():
         #This gets the IP address of who is viting 
         ip_address = request.remote_addr
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        #The line bellow will show us the broser or tool they used to log in
+        #The line bellow will show us the browser or tool they used to log in
         user_agent = request.headers.get("User-Agent")
         form_type = request.form.get("form_type", "Login")
 
@@ -66,17 +66,28 @@ def honeypot_login():
             session["logged_in_user"] = username
             return redirect(url_for("employee_dashboard"))
 
+        is_attack = inspect_firewall_rules(username,passward) #Firewall deep inspection
+
         ip_attempt = sum(1 for log in attack_logs if log["ip"]== ip_address)+1 # We are counting how many times the attacker tried to hack us
 
-        if ip_attempt > 3:
+        if is_attack :
             blocked_ips[ip_address]={
                 "time": timestamp,
-                "reason": "Automated Quarantined (Exceeded 3 Failed Attempts)",
+                "reason": "WAF Rule Triggered: Malicious Payload Injection",
             }
-            threat_level = "🔴 AUTO-QUARANTINED BY SYSTEM" 
-        else:
-            threat_level = "🚨Confirmed Malicious Attempt" if ip_attempt > 1 else "⚠️ Suspicious Activity Detected"
+            threat_level = "🔥 WAF BLOCKED (Injection Attack)" 
 
+        elif ip_attempt>= 4:
+            blocked_ips[ip_address] = {
+          "time": timestamp,
+          "reason": "Automated Quarantined (Exceeded 3 Failed Attempts)",
+          }
+            threat_level = "🔴 AUTO-QUARANTINED BY SYSTEM"
+        else:
+            threat_level = (
+          "🚨 CONFIRMED BOT" if ip_attempt > 3 else "⚠️ SUSPICIOUS ATTEMPT"
+      )
+            
         """Saving the hacker's details on the database"""
         log_entry ={
             "ip": ip_address,
