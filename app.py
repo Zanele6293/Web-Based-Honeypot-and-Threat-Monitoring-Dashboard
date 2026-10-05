@@ -112,8 +112,14 @@ def honeypot_login():
               + ") has been auto-quarantined."
           ),
       )
-        return render_template("login.html",action =action_type,error= "Invalid Security Token. Access Logged.")
+        return render_template(
+           "login.html",
+           action =action_type,
+           error= "Invalid Security Token. Access Logged.")
     return render_template("login.html",action=action_type, logs=attack_logs)
+
+#The Employee System
+
 
 #Employee logout route
 @app.route("/logout")
