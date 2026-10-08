@@ -21,6 +21,33 @@
             <h2>Welcome back to the Vaal River Operations Center</h2>
             <p class="text-muted mb-0">Riverside Sun is a relaxed 4-star resort hotel located on the scenic banks of the Vaal River in Vanderbijlpark. Manage daily occupancies and guest profiles securely below.</p>
         </div>
+
+        <div class="row text-center mb-4">
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm bg-white">
+                    <h6 class="text-muted">Total Rooms</h6>
+                    <h3 class="text-primary">{{ data.total_rooms }}</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm bg-white">
+                    <h6 class="text-muted">Occupied Rooms</h6>
+                    <h3 class="text-success">{{ data.occupied_rooms }}</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm bg-white">
+                    <h6 class="text-muted">Arriving Today</h6>
+                    <h3 class="text-info">{{ data.arriving_today }}</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm bg-white">
+                    <h6 class="text-muted">Checking Out</h6>
+                    <h3 class="text-warning">{{ data.checking_out_today }}</h3>
+                </div>
+            </div>
+        </div>
     </div>
     </div>
     </body>
