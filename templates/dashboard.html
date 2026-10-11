@@ -30,6 +30,24 @@
                         <th>Analyst Review Action</th>
                     </tr>
                 </thead>
+                <tbody>
+                  {% if blocked %}
+                        {% for ip, info in blocked.items() %}
+                        <tr>
+                            <td><code>{{ ip }}</code></td>
+                            <td>{{ info.time }}</td>
+                            <td><span class="badge bg-warning text-dark">{{ info.reason }}</span></td>
+                            <td>
+                                <a href="/unblock/{{ ip }}" class="btn btn-sm btn-success">✅ Clear & Unblock IP</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">No active quarantines. Systems running normally.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
             </table>
         </div>   
   </div>  
