@@ -6,20 +6,22 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <meta http-equiv="refresh" content="5">
 </head>
-<body>
-  <div class="container">
-    <header class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
-        <h1>🛡️ Riverside Sun — SOC Security Operations Panel</h1>
-        <span class="badge bg-danger fs-6">Hybrid Defense Active (Auto + Manual)</span>
-    </header>
+<body class="bg-dark text-light p-4">
 
-    <div class="alert alert-info">
+    <div class="container">
+        <header class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+            <h1>🛡️ Riverside Sun — SOC Security Operations Panel</h1>
+            <span class="badge bg-danger fs-6">Hybrid Defense Active (Auto + Manual)</span>
+        </header>
+
+        <div class="alert alert-info">
             <strong>SOC Dashboard Control Panel:</strong> 
             Test the portal on another machine or tab at <a href="/secret-admin-portal" target="_blank" class="alert-link">/secret-admin-portal</a>. 
             Review quarantines below or manually override threat statuses.
-    </div>
+        </div>
 
-    <h3 class="text-danger mt-4">🚫 Quarantined & Blacklisted IPs (Auto/Manual)</h3>
+        <!-- QUARANTINED & BLOCKED IPS -->
+        <h3 class="text-danger mt-4">🚫 Quarantined & Blacklisted IPs (Auto/Manual)</h3>
         <div class="table-responsive mb-5">
             <table class="table table-dark table-striped border border-danger">
                 <thead>
@@ -31,7 +33,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                  {% if blocked %}
+                    {% if blocked %}
                         {% for ip, info in blocked.items() %}
                         <tr>
                             <td><code>{{ ip }}</code></td>
@@ -49,7 +51,51 @@
                     {% endif %}
                 </tbody>
             </table>
-        </div>   
-  </div>  
+        </div>
+
+        <!-- LIVE INTRUSION ATTEMPTS -->
+        <h3 class="mt-4">📋 Live Threat Triage Feed</h3>
+        <div class="table-responsive">
+            <table class="table table-dark table-striped table-hover border border-secondary mt-2">
+                <thead>
+                    <tr>
+                        <th>Threat Classification</th>
+                        <th>Form Action</th>
+                        <th>Timestamp</th>
+                        <th>Attacker IP</th>
+                        <th>Targeted Username</th>
+                        <th>Stolen/Guessed Password</th>
+                        <th>Manual Override</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if logs %}
+                        {% for log in logs %}
+                        <tr>
+                            <td><strong>{{ log.threat }}</strong></td>
+                            <td><span class="badge bg-info text-dark">{{ log.action }}</span></td>
+                            <td>{{ log.time }}</td>
+                            <td><code>{{ log.ip }}</code></td>
+                            <td>{{ log.username }}</td>
+                            <td><span class="text-danger fw-bold">{{ log.password }}</span></td>
+                            <td>
+                                {% if log.ip in blocked %}
+                                    <span class="badge bg-danger">Quarantined</span>
+                                {% else %}
+                                    <a href="/block/{{ log.ip }}" class="btn btn-sm btn-outline-danger">Force Block</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">No suspicious activity recorded yet.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </body>
 </html>
