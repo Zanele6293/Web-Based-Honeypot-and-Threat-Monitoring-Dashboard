@@ -1,6 +1,5 @@
 from datetime import datetime
-from flask import Flask, redirect, render_template, request, url_for,session
-
+from flask import Flask, redirect, render_template, request, url_for, session
 
 app = Flask(__name__)
 
@@ -13,54 +12,61 @@ VALID_EMPLOYEES = {
     "security@riversidesun.com": "SafeGuard#55",
 }
 
-attack_logs= []
+attack_logs = []
 #A dictionary that tracks IPs manually and automatically.
-blocked_ips ={}
+blocked_ips = {}
+
+
+def get_real_client_ip():
+    """Extracts the true client IP address even when behind Ngrok, Pinggy, or reverse proxies."""
+    if request.headers.get("X-Forwarded-For"):
+        # The first IP in the comma-separated list is the real external machine
+        return request.headers.get("X-Forwarded-For").split(",")[0].strip()
+    return request.remote_addr
+
 
 def inspect_firewall_rules(username, password):
-  """Checks incoming user input for common hacker signatures
+    """Checks incoming user input for common hacker signatures
 
-  like SQL Injection (e.g., 'OR 1=1) or Script Tags (XSS).
-  """
-  username.lower()
-  malicious_signatures = ["'", '"', "or 1=1", "select *", "<script>", "--", ";"]
-  combined_input = (username + " " + password).lower()
+    like SQL Injection (e.g., 'OR 1=1) or Script Tags (XSS).
+    """
+    malicious_signatures = ["'", '"', "or 1=1", "select *", "<script>", "--", ";"]
+    combined_input = (username + " " + password).lower()
 
-  for signature in malicious_signatures:
-    if signature in combined_input:
-      return True  # Firewall triggered! Malicious pattern found.
-  return False
+    for signature in malicious_signatures:
+        if signature in combined_input:
+            return True  # Firewall triggered! Malicious pattern found.
+    return False
+
 
 # Home route redirects visitors to our portal
 @app.route("/")
 def home():
-  return redirect(url_for("honeypot_login"))
+    return redirect(url_for("honeypot_login"))
 
-@app.route('/secret-admin-portal',methods=['GET', 'POST'])
+
+@app.route('/secret-admin-portal', methods=['GET', 'POST'])
 def honeypot_login():
-      # This gets the IP address of who is visiting
-    if request.headers.get("X-Forwarded-For"):
-  # The header can contain a comma-separated list; the real client IP is usually the first one
-      ip_address = request.headers.get("X-Forwarded-For").split(",")[0].strip()
-    else:
-      ip_address = request.remote_addr
+    # This gets the IP address of who is visiting
+    ip_address = get_real_client_ip()
     action_type = request.args.get("action", "login")
 
     if ip_address in blocked_ips:
         return render_template(
-        "blocked.html",
-        message=(
-            "Access Denied: Your IP address ("
-            + ip_address
-            + ") has been blacklisted by Riverside Sun Security Operations (SOC) due to suspicious malicious activity."
-        ),
-    )
+            "blocked.html",
+            message=(
+                "Access Denied: Your IP address ("
+                + ip_address
+                + ") has been blacklisted by Riverside Sun Security Operations (SOC) due to suspicious malicious activity."
+            ),
+        )
 
     if request.method == 'POST':
-        username = request.form.get("username","").strip().lower()
-        passward = request.form.get("password","").strip()
-        #This gets the IP address of who is viting 
-        ip_address = request.remote_addr
+        username = request.form.get("username", "").strip().lower()
+        passward = request.form.get("password", "").strip()
+        
+        # This gets the IP address of who is visiting (fixed to keep the real external IP)
+        ip_address = get_real_client_ip()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         #The line bellow will show us the browser or tool they used to log in
         user_agent = request.headers.get("User-Agent")
@@ -68,36 +74,36 @@ def honeypot_login():
 
         # Checking if the user is a valid employee
         if username in VALID_EMPLOYEES and VALID_EMPLOYEES[username] == passward:
-          session["logged_in_user"] = username
-          return redirect(url_for("employee_dashboard"))
+            session["logged_in_user"] = username
+            return redirect(url_for("employee_dashboard"))
 
-        is_attack = inspect_firewall_rules(username,passward) #Firewall deep inspection
+        is_attack = inspect_firewall_rules(username, passward) #Firewall deep inspection
 
-        ip_attempt = sum(1 for log in attack_logs if log["ip"]== ip_address)+1 # We are counting how many times the attacker tried to hack us
+        ip_attempt = sum(1 for log in attack_logs if log["ip"] == ip_address) + 1 # We are counting how many times the attacker tried to hack us
 
-        if is_attack :
-            blocked_ips[ip_address]={
+        if is_attack:
+            blocked_ips[ip_address] = {
                 "time": timestamp,
                 "reason": "WAF Rule Triggered: Malicious Payload Injection",
             }
             threat_level = "🔥 WAF BLOCKED (Injection Attack)" 
 
-        elif ip_attempt>= 4:
+        elif ip_attempt >= 4:
             blocked_ips[ip_address] = {
-          "time": timestamp,
-          "reason": "Automated Quarantined (Exceeded 3 Failed Attempts)",
-          }
+                "time": timestamp,
+                "reason": "Automated Quarantined (Exceeded 3 Failed Attempts)",
+            }
             threat_level = "🔴 AUTO-QUARANTINED BY SYSTEM"
         else:
             threat_level = (
-          "🚨 CONFIRMED BOT" if ip_attempt > 3 else "⚠️ SUSPICIOUS ATTEMPT"
-      )
+                "🚨 CONFIRMED BOT" if ip_attempt > 3 else "⚠️ SUSPICIOUS ATTEMPT"
+            )
             
         """Saving the hacker's details on the database"""
-        log_entry ={
+        log_entry = {
             "ip": ip_address,
             "action": form_type,
-            "username":username,
+            "username": username,
             "password": passward,
             "time": timestamp,
             "attempt": ip_attempt,
@@ -105,85 +111,91 @@ def honeypot_login():
             "agent": user_agent
         }
 
-        attack_logs.insert(0,log_entry)
+        attack_logs.insert(0, log_entry)
 
         # If the auto-block just triggered, show blocked page immediately
         if ip_address in blocked_ips:
             return render_template(
-            "blocked.html",
-            message=(
-              "Security Alert: Maximum login attempts exceeded. Your IP ("
-              + ip_address
-              + ") has been auto-quarantined."
-          ),
-      )
+                "blocked.html",
+                message=(
+                    "Security Alert: Maximum login attempts exceeded. Your IP ("
+                    + ip_address
+                    + ") has been auto-quarantined."
+                ),
+            )
         return render_template(
-           "login.html",
-           action =action_type,
-           error= "Invalid Security Token. Access Logged.")
-    return render_template("login.html",action=action_type, logs=attack_logs)
+            "login.html",
+            action=action_type,
+            error="Invalid Security Token. Access Logged."
+        )
+    return render_template("login.html", action=action_type, logs=attack_logs)
+
 
 #The Employee System
 @app.route("/employee-dashboard")
 def employee_dashboard():
-  if "logged_in_user" not in session:
-    return redirect(url_for("honeypot_login"))
-  user = session["logged_in_user"]
-  data = {
-      "hotel_name": "Riverside Sun Resort (Vaal River)",
-      "total_rooms": 169,
-      "occupied_rooms": 142,
-      "arriving_today": 18,
-      "checking_out_today": 12,
-      "guests": [
-          {
-              "name": "Mr. D. Smith",
-              "room": "Deluxe River View 104",
-              "out": "2026-09-23",
-              "contact" :"083 221 3424",
-          },
-          {
-              "name": "Ms. L. van Der Merwe",
-              "room": "Standard Premium 212",
-              "out": "2026-09-23",
-              "contact" :"063 001 0924"
-          },
-          {
-              "name": "Dr. K. Naidoo",
-              "room": "Executive Suite 02",
-              "out": "2026-09-24",
-              "contact" :"079 111 3997"
-          },
-      ],
-  }
-  return render_template("employee_system.html", user=user, data=data)
+    if "logged_in_user" not in session:
+        return redirect(url_for("honeypot_login"))
+    user = session["logged_in_user"]
+    data = {
+        "hotel_name": "Riverside Sun Resort (Vaal River)",
+        "total_rooms": 169,
+        "occupied_rooms": 142,
+        "arriving_today": 18,
+        "checking_out_today": 12,
+        "guests": [
+            {
+                "name": "Mr. D. Smith",
+                "room": "Deluxe River View 104",
+                "out": "2026-09-23",
+                "contact": "083 221 3424",
+            },
+            {
+                "name": "Ms. L. van Der Merwe",
+                "room": "Standard Premium 212",
+                "out": "2026-09-23",
+                "contact": "063 001 0924"
+            },
+            {
+                "name": "Dr. K. Naidoo",
+                "room": "Executive Suite 02",
+                "out": "2026-09-24",
+                "contact": "079 111 3997"
+            },
+        ],
+    }
+    return render_template("employee_system.html", user=user, data=data)
 
 
 #Employee logout route
 @app.route("/logout")
 def logout():
-    session.pop("logged_in_user",None)
+    session.pop("logged_in_user", None)
     return redirect(url_for("honeypot_login"))
+
 
 """Our security dashboard where i'll be watching the attacks"""
 @app.route("/dashboard")
 def dashboard():
-    return render_template("dashboard.html",logs=attack_logs,blocked=blocked_ips )
+    return render_template("dashboard.html", logs=attack_logs, blocked=blocked_ips)
+
 
 @app.route("/block/<path:ip_address>")
 def block_ip(ip_address):
-  if ip_address not in blocked_ips:
-    blocked_ips[ip_address] = {
-        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "reason": "Manually Enforced by SOC Analyst",
-    }
-  return redirect(url_for("dashboard"))
+    if ip_address not in blocked_ips:
+        blocked_ips[ip_address] = {
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "reason": "Manually Enforced by SOC Analyst",
+        }
+    return redirect(url_for("dashboard"))
+
 
 @app.route("/unblock/<path:ip_address>")
 def unblock_ip(ip_address):
-  if ip_address in blocked_ips:
-    del blocked_ips[ip_address]
-  return redirect(url_for("dashboard"))
+    if ip_address in blocked_ips:
+        del blocked_ips[ip_address]
+    return redirect(url_for("dashboard"))
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0",debug = True, port=5000)
+    app.run(host="0.0.0.0", debug=True, port=5000)
