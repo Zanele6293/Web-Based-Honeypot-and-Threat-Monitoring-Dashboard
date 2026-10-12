@@ -119,7 +119,10 @@ def honeypot_login():
     return render_template("login.html",action=action_type, logs=attack_logs)
 
 #The Employee System
-
+def employee_dashboard():
+   if "logged_in_user" not in  session:
+      return redirect(url_for("honey_login"))
+   user = session["logged_in_user"]
 
 #Employee logout route
 @app.route("/logout")
