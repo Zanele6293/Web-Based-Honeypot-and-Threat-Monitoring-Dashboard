@@ -22,6 +22,7 @@ def inspect_firewall_rules(username, password):
 
   like SQL Injection (e.g., 'OR 1=1) or Script Tags (XSS).
   """
+  username.lower()
   malicious_signatures = ["'", '"', "or 1=1", "select *", "<script>", "--", ";"]
   combined_input = (username + " " + password).lower()
 
@@ -52,7 +53,7 @@ def honeypot_login():
     )
 
     if request.method == 'POST':
-        username = request.form.get("username","").strip()
+        username = request.form.get("username","").strip().lower()
         passward = request.form.get("password","").strip()
         #This gets the IP address of who is viting 
         ip_address = request.remote_addr
@@ -119,10 +120,28 @@ def honeypot_login():
     return render_template("login.html",action=action_type, logs=attack_logs)
 
 #The Employee System
+@app.route("/employee-dashboard")
 def employee_dashboard():
-   if "logged_in_user" not in  session:
-      return redirect(url_for("honey_login"))
-   user = session["logged_in_user"]
+  if "logged_in_user" not in session:
+    return redirect(url_for("honeypot_login"))
+  user = session["logged_in_user"]
+  data = {
+      "hotel_name": "Riverside Sun Resort (Vaal River)",
+      "total_rooms": 169,
+      "occupied_rooms": 142,
+      "arriving_today": 18,
+      "checking_out_today": 12,
+      "guests": [
+          {
+              "name": "Mr. D. Smith",
+              "room": "Deluxe River View 104",
+              "out": "2026-09-23",
+          },
+          
+      ],
+  }
+  return render_template("employee_system.html", user=user, data=data)
+
 
 #Employee logout route
 @app.route("/logout")
