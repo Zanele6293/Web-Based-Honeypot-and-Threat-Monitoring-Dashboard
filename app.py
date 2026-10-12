@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, redirect, render_template, request, url_for,session
 
 
 app = Flask(__name__)
@@ -8,7 +8,7 @@ app.secret_key = "riverside-sun_secure_key_9911"
 
 #Data o f valid emplyees
 VALID_EMPLOYEES = {
-    "Zanele@southernsun.com": "SunVaal2026!",
+    "zanele@southernsun.com": "SunVaal2026!",
     "reception@riversidesun.com": "HotelRoom123",
     "security@riversidesun.com": "SafeGuard#55",
 }
@@ -39,7 +39,11 @@ def home():
 @app.route('/secret-admin-portal',methods=['GET', 'POST'])
 def honeypot_login():
       # This gets the IP address of who is visiting
-    ip_address = request.remote_addr
+    if request.headers.get("X-Forwarded-For"):
+  # The header can contain a comma-separated list; the real client IP is usually the first one
+      ip_address = request.headers.get("X-Forwarded-For").split(",")[0].strip()
+    else:
+      ip_address = request.remote_addr
     action_type = request.args.get("action", "login")
 
     if ip_address in blocked_ips:
@@ -64,8 +68,8 @@ def honeypot_login():
 
         # Checking if the user is a valid employee
         if username in VALID_EMPLOYEES and VALID_EMPLOYEES[username] == passward:
-            session["logged_in_user"] = username
-            return redirect(url_for("employee_dashboard"))
+          session["logged_in_user"] = username
+          return redirect(url_for("employee_dashboard"))
 
         is_attack = inspect_firewall_rules(username,passward) #Firewall deep inspection
 
@@ -136,8 +140,20 @@ def employee_dashboard():
               "name": "Mr. D. Smith",
               "room": "Deluxe River View 104",
               "out": "2026-09-23",
+              "contact" :"083 221 3424",
           },
-          
+          {
+              "name": "Ms. L. van Der Merwe",
+              "room": "Standard Premium 212",
+              "out": "2026-09-23",
+              "contact" :"063 001 0924"
+          },
+          {
+              "name": "Dr. K. Naidoo",
+              "room": "Executive Suite 02",
+              "out": "2026-09-24",
+              "contact" :"079 111 3997"
+          },
       ],
   }
   return render_template("employee_system.html", user=user, data=data)
