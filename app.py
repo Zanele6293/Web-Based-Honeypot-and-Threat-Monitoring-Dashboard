@@ -17,6 +17,13 @@ attack_logs = []
 blocked_ips = {}
 
 
+def get_real_client_ip():
+    """Extracts the true client IP address even when behind Ngrok, Pinggy, or reverse proxies."""
+    if request.headers.get("X-Forwarded-For"):
+        # The first IP in the comma-separated list is the real external machine
+        return request.headers.get("X-Forwarded-For").split(",")[0].strip()
+    return request.remote_addr
+
 
 def inspect_firewall_rules(username, password):
     """Checks incoming user input for common hacker signatures
@@ -31,6 +38,7 @@ def inspect_firewall_rules(username, password):
             return True  # Firewall triggered! Malicious pattern found.
     return False
 
+
 # Home route redirects visitors to our portal
 @app.route("/")
 def home():
@@ -40,7 +48,7 @@ def home():
 @app.route('/secret-admin-portal', methods=['GET', 'POST'])
 def honeypot_login():
     # This gets the IP address of who is visiting
-   
+    ip_address = get_real_client_ip()
     action_type = request.args.get("action", "login")
 
     if ip_address in blocked_ips:
@@ -58,7 +66,7 @@ def honeypot_login():
         passward = request.form.get("password", "").strip()
         
         # This gets the IP address of who is visiting (fixed to keep the real external IP)
-        
+        ip_address = get_real_client_ip()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         #The line bellow will show us the browser or tool they used to log in
         user_agent = request.headers.get("User-Agent")
@@ -171,6 +179,7 @@ def logout():
 def dashboard():
     return render_template("dashboard.html", logs=attack_logs, blocked=blocked_ips)
 
+
 @app.route("/block/<path:ip_address>")
 def block_ip(ip_address):
     if ip_address not in blocked_ips:
@@ -179,6 +188,7 @@ def block_ip(ip_address):
             "reason": "Manually Enforced by SOC Analyst",
         }
     return redirect(url_for("dashboard"))
+
 
 @app.route("/unblock/<path:ip_address>")
 def unblock_ip(ip_address):
