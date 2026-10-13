@@ -171,6 +171,14 @@ def logout():
 def dashboard():
     return render_template("dashboard.html", logs=attack_logs, blocked=blocked_ips)
 
+@app.route("/block/<path:ip_address>")
+def block_ip(ip_address):
+    if ip_address not in blocked_ips:
+        blocked_ips[ip_address] = {
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "reason": "Manually Enforced by SOC Analyst",
+        }
+    return redirect(url_for("dashboard"))
 
 @app.route("/unblock/<path:ip_address>")
 def unblock_ip(ip_address):
