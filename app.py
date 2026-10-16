@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 app.secret_key = "riverside-sun_secure_key_9911"
 
-#Data o f valid emplyees
+# Data of valid employees
 VALID_EMPLOYEES = {
     "zanele@southernsun.com": "SunVaal2026!",
     "reception@riversidesun.com": "HotelRoom123",
@@ -13,12 +13,12 @@ VALID_EMPLOYEES = {
 }
 
 attack_logs = []
-#A dictionary that tracks IPs manually and automatically.
+# A dictionary that tracks IPs manually and automatically.
 blocked_ips = {}
 
 
 def get_real_client_ip():
-    """Extracts the true client IP address even when behind Ngrok, Pinggy, or reverse proxies."""
+    """Extracts the true client IP address even when behind reverse proxies."""
     if request.headers.get("X-Forwarded-For"):
         # The first IP in the comma-separated list is the real external machine
         return request.headers.get("X-Forwarded-For").split(",")[0].strip()
@@ -63,21 +63,21 @@ def honeypot_login():
 
     if request.method == 'POST':
         username = request.form.get("username", "").strip().lower()
-        passward = request.form.get("password", "").strip()
+        password = request.form.get("password", "").strip()
         
         # This gets the IP address of who is visiting (fixed to keep the real external IP)
         ip_address = get_real_client_ip()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        #The line bellow will show us the browser or tool they used to log in
+        # The line below will show us the browser or tool they used to log in
         user_agent = request.headers.get("User-Agent")
         form_type = request.form.get("form_type", "Login")
 
         # Checking if the user is a valid employee
-        if username in VALID_EMPLOYEES and VALID_EMPLOYEES[username] == passward:
+        if username in VALID_EMPLOYEES and VALID_EMPLOYEES[username] == password:
             session["logged_in_user"] = username
             return redirect(url_for("employee_dashboard"))
 
-        is_attack = inspect_firewall_rules(username, passward) #Firewall deep inspection
+        is_attack = inspect_firewall_rules(username, password) # Firewall deep inspection
 
         ip_attempt = sum(1 for log in attack_logs if log["ip"] == ip_address) + 1 # We are counting how many times the attacker tried to hack us
 
@@ -104,7 +104,7 @@ def honeypot_login():
             "ip": ip_address,
             "action": form_type,
             "username": username,
-            "password": passward,
+            "password": password,
             "time": timestamp,
             "attempt": ip_attempt,
             "threat": threat_level,
@@ -131,7 +131,7 @@ def honeypot_login():
     return render_template("login.html", action=action_type, logs=attack_logs)
 
 
-#The Employee System
+# The Employee System
 @app.route("/employee-dashboard")
 def employee_dashboard():
     if "logged_in_user" not in session:
@@ -167,14 +167,14 @@ def employee_dashboard():
     return render_template("employee_system.html", user=user, data=data)
 
 
-#Employee logout route
+# Employee logout route
 @app.route("/logout")
 def logout():
     session.pop("logged_in_user", None)
     return redirect(url_for("honeypot_login"))
 
 
-"""Our security dashboard where i'll be watching the attacks"""
+"""Our security dashboard where I'll be watching the attacks"""
 @app.route("/dashboard")
 def dashboard():
     return render_template("dashboard.html", logs=attack_logs, blocked=blocked_ips)
