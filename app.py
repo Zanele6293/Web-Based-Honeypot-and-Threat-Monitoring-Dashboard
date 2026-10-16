@@ -189,13 +189,11 @@ def block_ip(ip_address):
         }
     return redirect(url_for("dashboard"))
 
-
 @app.route("/unblock/<path:ip_address>")
 def unblock_ip(ip_address):
     if ip_address in blocked_ips:
         del blocked_ips[ip_address]
     return redirect(url_for("dashboard"))
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True, port=5000)
