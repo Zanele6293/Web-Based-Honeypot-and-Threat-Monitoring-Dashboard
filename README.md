@@ -142,5 +142,7 @@ python app.py
 
 ---
 
-```
+```text
 Verification Code: WTC-KNPSP4AD
+```
+```
