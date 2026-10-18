@@ -137,6 +137,10 @@ def employee_dashboard():
     if "logged_in_user" not in session:
         return redirect(url_for("honeypot_login"))
     user = session["logged_in_user"]
+
+    today = date.today()
+    tomorrow = today + timedelta(days=1)
+    day_after = today + timedelta(days=2)
     data = {
         "hotel_name": "Riverside Sun Resort (Vaal River)",
         "total_rooms": 169,
@@ -145,11 +149,12 @@ def employee_dashboard():
         "checking_out_today": 12,
         "guests": [
             {
-                "name": "Mr. D. Smith",
-                "room": "Deluxe River View 104",
-                "out": "2026-09-23",
-                "contact": "083 221 3424",
-            },
+              "name": "Mr. D. Smith",
+              "room": "Deluxe River View 104",
+              "out": today.strftime("%Y-%m-%d"),  # Checks out today
+              "contact": "083 221 3424",
+              "status": "Checking Out Today",
+          },
             {
                 "name": "Ms. L. van Der Merwe",
                 "room": "Standard Premium 212",
