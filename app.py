@@ -156,17 +156,19 @@ def employee_dashboard():
               "status": "Checking Out Today",
           },
             {
-                "name": "Ms. L. van Der Merwe",
-                "room": "Standard Premium 212",
-                "out": "2026-09-23",
-                "contact": "063 001 0924"
-            },
-            {
-                "name": "Dr. K. Naidoo",
-                "room": "Executive Suite 02",
-                "out": "2026-09-24",
-                "contact": "079 111 3997"
-            },
+              "name": "Ms. L. van Der Merwe",
+              "room": "Standard Premium 212",
+              "out": tomorrow.strftime("%Y-%m-%d"),  # Checks out tomorrow
+              "contact": "063 001 0924",
+              "status": "Checked In",
+          },
+          {
+              "name": "Dr. K. Naidoo",
+              "room": "Executive Suite 02",
+              "out": day_after.strftime("%Y-%m-%d"),  # Checks out in 2 days
+              "contact": "079 111 3997",
+              "status": "Checked In",
+          },
         ],
     }
     return render_template("employee_system.html", user=user, data=data)
