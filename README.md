@@ -131,6 +131,7 @@ python app.py
 
 * **No Server Localhost Masking:** Custom IP-resolution handles network headers so that distinct attack sources are banned individually without blacklisting the internal loopback adapter.
 * **Separation of Concerns:** Decoy logic is cleanly separated from analyst review routes (`/dashboard` vs `/secret-admin-portal`).
+http://127.0.0.1:5000/dashboard
 * **Session Hardening:** Uses secure cryptographic session keys for employee authentication.
 
 ---
