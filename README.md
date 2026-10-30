@@ -18,32 +18,32 @@
 Organizations face continuous credential stuffing, brute-force attacks, and automated vulnerability scanning. This project acts as an **active cyber defense mechanism**:
 
 1. **The Trap (Honeypot):** A realistic administrative login portal pretending to grant access to confidential hotel guest records.
-2. **The Defense (In-App WAF):** Deep packet inspection on incoming credentials to detect SQL Injections (SQLi), Cross-Site Scripting (XSS), and brute-force attempts.
+2. **The Defense (Demo Detection Rules):** Simple signature checks on failed login fields plus a rolling-window rate limit to demonstrate basic detection and response.
 3. **The Control Center (Dashboard):** An analyst interface allowing security teams to review live threat telemetry and manually block or unblock IP addresses.
 
 ---
 
 ## ✨ Key Features
 
-* **Real Client IP Resolution (`X-Forwarded-For`):** Correctly isolates and tracks external client machines across networks, preventing remote traffic from being masked incorrectly.
-* **Automated Threat Quarantine:** Automatically blacklists offending IPs when malicious injection signatures are detected or when failed login attempts exceed the threshold ($\ge 4$ attempts).
+* **Client IP Tracking:** Records the direct connection's peer address and does not trust spoofable `X-Forwarded-For` headers.
+* **Demonstration Detection Rules:** Checks login fields for a small set of SQLi/XSS example signatures and records which rule matched. These simple rules can produce false positives and are not a production WAF.
+* **Rolling-Window Rate Limit:** Four failed logins from one IP within 60 seconds trigger a temporary 60-second quarantine. Expired blocks are cleared when the IP or dashboard is next accessed.
 * **Decoy Employee Management System:** Authenticated staff access a fake, read-only hotel reservation ledger containing occupancy stats and mock guest information.
-* **Live Incident Telemetry:** Logs timestamp, client IP, raw payload attempted, browser User-Agent string, and threat classification.
+* **Privacy-Aware Incident Telemetry:** Logs timestamp, client IP, attempted username, browser User-Agent string, threat classification, and a plain-language detection reason. Submitted passwords are not retained or shown.
 * **Analyst Override Controls:** SOC analysts can manually quarantine or release IP addresses directly from the dashboard interface.
 
 ---
 
-## 🔍 Threat Classification & WAF Engine
+## 🔍 Demonstration Detection Rules and Rate Limiting
 
-The built-in WAF engine inspects all incoming credentials against recognized attack signatures:
+After a login fails, the app checks the submitted fields against a small list of example SQLi/XSS signatures. A match triggers an immediate IP block; otherwise, four failed logins from the same IP within 60 seconds trigger a temporary 60-second quarantine. This is a learning example, not a complete WAF.
 
 | Attack Vector | Example Signatures Inspected | Action Taken | Classification |
 | :--- | :--- | :--- | :--- |
-| **SQL Injection (SQLi)** | `'`, `"`, `or 1=1`, `select *`, `union`, `--`, `;` | Immediate IP Blacklist | `🔥 WAF BLOCKED (Injection Attack)` |
-| **Cross-Site Scripting (XSS)** | `<script>`, `alert()`, `javascript:` | Immediate IP Blacklist | `🔥 WAF BLOCKED (Injection Attack)` |
-| **Brute-Force Attack** | $\ge 4$ consecutive failed attempts | Automated Quarantine | `🔴 AUTO-QUARANTINED BY SYSTEM` |
-| **Bot Scanning** | $> 3$ rapid unrecognized attempts | Logged & Flagged | `🚨 CONFIRMED BOT` |
-| **Failed Login** | $1 - 3$ incorrect credentials | Logged & Monitored | `⚠️ SUSPICIOUS ATTEMPT` |
+| **SQL Injection (SQLi)** | `'`, `"`, `or 1=1`, `select *`, `union`, `--`, `;` | Immediate IP block | `🔥 WAF BLOCKED (Injection Pattern)` |
+| **Cross-Site Scripting (XSS)** | `<script>`, `alert(`, `javascript:` | Immediate IP block | `🔥 WAF BLOCKED (Injection Pattern)` |
+| **Repeated Failed Login** | 4 failures from one IP within 60 seconds | Temporary 60-second quarantine | `🔴 RATE LIMITED (Temporary Quarantine)` |
+| **Failed Login** | No signature match and below the rate limit | Logged with an explanation | `⚠️ Failed Login` |
 
 ---
 
@@ -52,7 +52,6 @@ The built-in WAF engine inspects all incoming credentials against recognized att
 ```text
 Web-Based-Honeypot-and-Threat-Monitoring-Dashboard/
 ├── app.py                     # Core Flask application, WAF rules & routing logic
-├── requirements.txt           # Python dependencies
 ├── templates/
 │   ├── login.html             # The honeypot decoy login portal
 │   ├── dashboard.html         # SOC analyst threat monitoring interface
@@ -88,24 +87,20 @@ source venv/bin/activate
 
 ### 3. Install Dependencies
 ```bash
-pip install -r requirements.txt
-# Or manually install Flask:
 pip install flask
 ```
 
-### 4. Find Your Local IP Address
-To test multi-device setups or allow other devices on your local network to interact with the honeypot, find your machine's local IP address by running:
-```bash
-hostname -I
-```
-*(Copy your local network IP address, e.g., `192.168.x.x`)*
-
-### 5. Run the Application
-Start the Flask server locally:
+### 4. Run the Application
+Start the Flask server locally. It binds to `127.0.0.1` with debug mode disabled:
 ```bash
 python app.py
 ```
-*Access the app locally at `http://127.0.0.1:5000` or across your network using your local IP at `http://<YOUR_IP_ADDRESS>:5000`.*
+*Open `http://127.0.0.1:5000` on the same machine. This demo is intentionally not exposed to your network.*
+
+### 5. Run the Automated Checks
+```bash
+python -m unittest discover -s tests -v
+```
 
 ---
 
@@ -117,22 +112,26 @@ python app.py
 3. **Outcome:** The client IP is blocked instantly (`Access Denied`).
 4. Open the **Dashboard** to see the recorded attack telemetry under `🔥 WAF BLOCKED`.
 
-### Scenario B: Brute-Force Threshold
-1. Attempt 4 consecutive failed logins using incorrect credentials.
-2. **Outcome:** The system triggers an automatic IP quarantine lock out.
+### Scenario B: Rate Limit
+1. Submit 4 incorrect logins from the same browser within 60 seconds, using inputs without the demo signatures.
+2. **Outcome:** The IP is temporarily quarantined for 60 seconds. The dashboard explains the threshold and the reason.
 
 ### Scenario C: Authorized Access
-1. Log in using valid staff credentials (`zanele@southernsun.com` / `SunVaal2026!`).
+1. Use the local demo account configured in `app.py`.
 2. **Outcome:** Successfully accesses the internal **Riverside Sun Resort** guest management dashboard.
 
 ---
 
 ## 🔒 Security & Architectural Highlights
 
-* **No Server Localhost Masking:** Custom IP-resolution handles network headers so that distinct attack sources are banned individually without blacklisting the internal loopback adapter.
+* **Direct Peer IP:** The app uses the direct connection address rather than trusting client-supplied forwarding headers.
 * **Separation of Concerns:** Decoy logic is cleanly separated from analyst review routes (`/dashboard` vs `/secret-admin-portal`).
-http://127.0.0.1:5000/dashboard
-* **Session Hardening:** Uses secure cryptographic session keys for employee authentication.
+* **Password Privacy:** Submitted passwords are checked for demo authentication and attack signatures but are not stored in threat logs.
+* **Tested Behaviors:** Automated tests check ordinary failed-login logging, signature detection, rolling-window rate limiting, temporary-block expiry, and password redaction.
+
+## ⚠️ Educational Lab Limitations
+
+This project demonstrates basic defensive ideas; it is not a production WAF or SOC platform. Its signature checks are intentionally simple and can produce false positives. Rate-limit state, threat logs, and IP blocks are held in memory and disappear when the app restarts; temporary blocks expire when the IP or dashboard is next accessed. The analyst dashboard has no authentication, and demo credentials and the session key are configured in source code for the exercise. Run it only on your own machine with dummy inputs, never with real passwords or personal data, and do not deploy it publicly.
 
 ---
 

@@ -1,9 +1,15 @@
 from datetime import date, datetime, timedelta
+import time
+from collections import defaultdict, deque
 from flask import Flask, redirect, render_template, request, url_for, session
 
 app = Flask(__name__)
 
 app.secret_key = "riverside-sun_secure_key_9911"
+
+RATE_LIMIT_WINDOW_SECONDS = 60
+RATE_LIMIT_MAX_ATTEMPTS = 4
+RATE_LIMIT_BLOCK_SECONDS = 60
 
 # Data of valid employees
 VALID_EMPLOYEES = {
@@ -15,28 +21,55 @@ VALID_EMPLOYEES = {
 attack_logs = []
 # A dictionary that tracks IPs manually and automatically.
 blocked_ips = {}
+failed_attempts = defaultdict(deque)
 
 
 def get_real_client_ip():
-    """Extracts the true client IP address even when behind reverse proxies."""
-    if request.headers.get("X-Forwarded-For"):
-        # The first IP in the comma-separated list is the real external machine
-        return request.headers.get("X-Forwarded-For").split(",")[0].strip()
+    """Return the direct peer address; forwarded headers are not trusted."""
     return request.remote_addr
 
 
 def inspect_firewall_rules(username, password):
-    """Checks incoming user input for common hacker signatures
-
-    like SQL Injection (e.g., 'OR 1=1) or Script Tags (XSS).
-    """
-    malicious_signatures = ["'", '"', "or 1=1", "select *", "<script>", "--", ";"]
+    """Return a simple demo-rule explanation when a signature matches."""
+    malicious_signatures = [
+        ("SQL injection", "'"),
+        ("SQL injection", '"'),
+        ("SQL injection", "or 1=1"),
+        ("SQL injection", "select *"),
+        ("SQL injection", "union"),
+        ("SQL injection", "--"),
+        ("SQL injection", ";"),
+        ("XSS", "<script>"),
+        ("XSS", "javascript:"),
+        ("XSS", "alert("),
+    ]
     combined_input = (username + " " + password).lower()
 
-    for signature in malicious_signatures:
+    for category, signature in malicious_signatures:
         if signature in combined_input:
-            return True  # Firewall triggered! Malicious pattern found.
-    return False
+            return f"{category} demo signature matched: {signature}"
+    return None
+
+
+def get_active_block(ip_address):
+    """Return an active block, clearing it if its temporary period has ended."""
+    block = blocked_ips.get(ip_address)
+    if block is not None:
+        expires_at = block.get("expires_at")
+        if expires_at is not None and time.monotonic() >= expires_at:
+            del blocked_ips[ip_address]
+            return None
+    return block
+
+
+def count_recent_failed_attempts(ip_address, current_time):
+    """Count failed attempts from this IP within the configured rolling window."""
+    attempts = failed_attempts[ip_address]
+    window_start = current_time - RATE_LIMIT_WINDOW_SECONDS
+    while attempts and attempts[0] <= window_start:
+        attempts.popleft()
+    attempts.append(current_time)
+    return len(attempts)
 
 
 # Home route redirects visitors to our portal
@@ -51,21 +84,16 @@ def honeypot_login():
     ip_address = get_real_client_ip()
     action_type = request.args.get("action", "login")
 
-    if ip_address in blocked_ips:
+    if get_active_block(ip_address) is not None:
         return render_template(
             "blocked.html",
-            message=(
-                "Access Denied: Your IP address ("
-                + ip_address
-                + ") has been blacklisted by Riverside Sun Security Operations (SOC) due to suspicious malicious activity."
-            ),
+            message=f"Access denied. {blocked_ips[ip_address]['reason']}",
         )
 
     if request.method == 'POST':
         username = request.form.get("username", "").strip().lower()
         password = request.form.get("password", "").strip()
         
-        # This gets the IP address of who is visiting (fixed to keep the real external IP)
         ip_address = get_real_client_ip()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # The line below will show us the browser or tool they used to log in
@@ -74,59 +102,60 @@ def honeypot_login():
 
         # Checking if the user is a valid employee
         if username in VALID_EMPLOYEES and VALID_EMPLOYEES[username] == password:
+            failed_attempts.pop(ip_address, None)
             session["logged_in_user"] = username
             return redirect(url_for("employee_dashboard"))
 
-        is_attack = inspect_firewall_rules(username, password) # Firewall deep inspection
+        current_time = time.monotonic()
+        ip_attempt = count_recent_failed_attempts(ip_address, current_time)
+        detection_reason = inspect_firewall_rules(username, password)
 
-        ip_attempt = sum(1 for log in attack_logs if log["ip"] == ip_address) + 1 # We are counting how many times the attacker tried to hack us
-
-        if is_attack:
+        if detection_reason:
             blocked_ips[ip_address] = {
                 "time": timestamp,
-                "reason": "WAF Rule Triggered: Malicious Payload Injection",
+                "reason": detection_reason,
             }
-            threat_level = "🔥 WAF BLOCKED (Injection Attack)" 
-
-        elif ip_attempt >= 4:
-            blocked_ips[ip_address] = {
-                "time": timestamp,
-                "reason": "Automated Quarantined (Exceeded 3 Failed Attempts)",
-            }
-            threat_level = "🔴 AUTO-QUARANTINED BY SYSTEM"
-        else:
-            threat_level = (
-                "🚨 CONFIRMED BOT" if ip_attempt > 3 else "⚠️ SUSPICIOUS ATTEMPT"
+            threat_level = "🔥 WAF BLOCKED (Injection Pattern)"
+        elif ip_attempt >= RATE_LIMIT_MAX_ATTEMPTS:
+            detection_reason = (
+                f"Rate limit exceeded: {ip_attempt} failed attempts within "
+                f"{RATE_LIMIT_WINDOW_SECONDS} seconds; temporary block for "
+                f"{RATE_LIMIT_BLOCK_SECONDS} seconds."
             )
+            blocked_ips[ip_address] = {
+                "time": timestamp,
+                "reason": detection_reason,
+                "expires_at": current_time + RATE_LIMIT_BLOCK_SECONDS,
+            }
+            threat_level = "🔴 RATE LIMITED (Temporary Quarantine)"
+        else:
+            detection_reason = "Failed login; no demo detection rule matched."
+            threat_level = "⚠️ Failed Login"
             
-        """Saving the hacker's details on the database"""
+        # Keep investigation metadata in memory without retaining submitted passwords.
         log_entry = {
             "ip": ip_address,
             "action": form_type,
             "username": username,
-            "password": password,
             "time": timestamp,
             "attempt": ip_attempt,
             "threat": threat_level,
+            "reason": detection_reason,
             "agent": user_agent
         }
 
         attack_logs.insert(0, log_entry)
 
         # If the auto-block just triggered, show blocked page immediately
-        if ip_address in blocked_ips:
+        if get_active_block(ip_address) is not None:
             return render_template(
                 "blocked.html",
-                message=(
-                    "Security Alert: Maximum login attempts exceeded. Your IP ("
-                    + ip_address
-                    + ") has been auto-quarantined."
-                ),
+                message=f"Security alert. {blocked_ips[ip_address]['reason']}",
             )
         return render_template(
             "login.html",
             action=action_type,
-            error="Invalid Security Token. Access Logged."
+            error="Invalid credentials. Attempt recorded for the SOC dashboard."
         )
     return render_template("login.html", action=action_type, logs=attack_logs)
 
@@ -184,6 +213,8 @@ def logout():
 """Our security dashboard where I'll be watching the attacks"""
 @app.route("/dashboard")
 def dashboard():
+    for ip_address in list(blocked_ips):
+        get_active_block(ip_address)
     return render_template("dashboard.html", logs=attack_logs, blocked=blocked_ips)
 
 
@@ -203,4 +234,4 @@ def unblock_ip(ip_address):
     return redirect(url_for("dashboard"))
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True, port=5000)
+    app.run(host="127.0.0.1", debug=False, port=5000)
