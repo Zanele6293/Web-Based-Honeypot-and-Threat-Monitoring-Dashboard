@@ -97,6 +97,8 @@ python app.py
 ```
 *Open `http://127.0.0.1:5000` on the same machine. This demo is intentionally not exposed to your network.*
 
+*SOC Security dashboard `http://127.0.0.1:5000/dashboard` url*
+
 ### 5. Run the Automated Checks
 ```bash
 python -m unittest discover -s tests -v

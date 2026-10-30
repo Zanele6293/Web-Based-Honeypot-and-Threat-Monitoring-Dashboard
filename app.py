@@ -188,17 +188,17 @@ def employee_dashboard():
             "name": "Mr. T.Y. Spencer",
             "room": "Deluxe River View 104",
             "out": today.strftime("%Y-%m-%d"),  # Checks out today
-            "contact": "083 007 3424",
+            "contact": "083  3424",
             "status": "Checking Out Today",
             },
             {
             "name": "Mr. D. Jacobs",
             "room": "Deluxe River View 104",
             "out": today.strftime("%Y-%m-%d"),  # Checks out today
-            "contact": "063 124 0024",
+            "contact": "063 921 3424",
             "status": "Checking Out Today",
             },
-            
+            {
             "name": "Ms. O. Sanders",
             "room": "Deluxe River View 104",
             "out": today.strftime("%Y-%m-%d"),  # Checks out today
