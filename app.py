@@ -184,6 +184,27 @@ def employee_dashboard():
               "contact": "083 221 3424",
               "status": "Checking Out Today",
           },
+          {
+            "name": "Mr. T.Y. Spencer",
+            "room": "Deluxe River View 104",
+            "out": today.strftime("%Y-%m-%d"),  # Checks out today
+            "contact": "083 007 3424",
+            "status": "Checking Out Today",
+            },
+            {
+            "name": "Mr. D. Jacobs",
+            "room": "Deluxe River View 104",
+            "out": today.strftime("%Y-%m-%d"),  # Checks out today
+            "contact": "063 124 0024",
+            "status": "Checking Out Today",
+            },
+            
+            "name": "Ms. O. Sanders",
+            "room": "Deluxe River View 104",
+            "out": today.strftime("%Y-%m-%d"),  # Checks out today
+            "contact": "083 021 5657",
+            "status": "Checking Out Today",
+            },
             {
               "name": "Ms. L. van Der Merwe",
               "room": "Standard Premium 212",
